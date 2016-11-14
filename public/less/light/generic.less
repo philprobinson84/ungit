@@ -3,8 +3,8 @@
 // This file can be used to style any page to look like "ungit", i.e. anything that's not
 // application specific goes here.
 
-@import "../vendor/less/bootstrap/bootstrap.less";
-@import "../../node_modules/octicons/octicons/octicons.less";
+@import "../../vendor/less/bootstrap/bootstrap.less";
+@import "../../../node_modules/octicons/octicons/octicons.less";
 @import "variables.less";
 
 @font-face {
@@ -63,11 +63,11 @@
 
 .form-control {
 	border: 0px;
-	color: rgba(255, 255, 255, 0.8);
+	color: @generic-form-control-color;
 }
 
 .list-group-item {
-	background: rgba(0, 0, 0, 0.09);
+	background: @list-group-hover-bg;
 	border: 0px;
 	margin-bottom: 3px;
 }
@@ -90,7 +90,7 @@ div.list-group-item {
 
 hr {
 	border: 0px;
-	border-top: 1px solid rgba(255, 255, 255, 0.1);
+	border-top: 1px solid @generic-hr-border-color;
 	background: transparent;
 	height: 0px;
 }
@@ -146,7 +146,7 @@ a.disabled {
 	border-radius: 3px;
 	padding: 0.3em;
 	display: inline-block;
-	background: #2B4C5C;
+	background: @generic-droparea-bg-color;
 	padding: 5px;
 	padding-left: 10px;
 	padding-right: 10px;
@@ -176,16 +176,16 @@ a.disabled {
 	width: 15px;
 }
 ::-webkit-scrollbar-track {
-      background-color: #2B3844;
+      background-color: @webkit-scrollbar-track-bg-color;
 }
 ::-webkit-scrollbar-thumb {
-      background-color: rgba(255, 255, 255, 0.2);
+      background-color: @webkit-scrollbar-thumb-bg-color;
 }
 ::-webkit-scrollbar-button {
-      background-color: rgba(0, 0, 0, 0.2);
+      background-color: @webkit-scrollbar-button-bg-color;
 }
 ::-webkit-scrollbar-corner {
-      background-color: black;
+      background-color: @webkit-scrollbar-corner-bg-color;
 }
 
 .create-dir {

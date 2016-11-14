@@ -1,0 +1,107 @@
+
+
+@import "../../vendor/less/bootstrap/variables.less";
+
+// -- Application specific variables ----
+@log-width-small: 400px;
+@log-width-large: 550px;
+
+// -- Bootstrap variables ---
+@navbar-default-bg: #2B3844;
+@font-family-sans-serif: 'Open Sans';
+@font-family-monospace: 'Source Code Pro';
+@body-bg: #252833;
+@progress-bg: rgba(0, 0, 0, 0.2);
+@progress-bar-bg: rgba(0, 0, 0, 0.2);
+@text-color: #D8D8D8;
+@text-muted: #707A85;
+@panel-bg: #3C4653;
+@panel-default-text: @text-color;
+@panel-default-heading-bg: #2C3541;
+@panel-default-border: #362C36;
+@list-group-bg: transparent;
+@list-group-hover-bg: rgba(0, 0, 0, 0.2);
+@list-group-border: #435158;
+@list-group-link-heading-color: rgba(255, 255, 255, 0.8);
+@list-group-link-color: rgba(255, 255, 255, 0.5);
+@modal-content-bg: @panel-bg;
+@modal-header-border-color: @list-group-border;
+@input-bg: rgba(255, 255, 255, 0.1);
+@input-color-placeholder: rgba(255, 255, 255, 0.3);
+@btn-default-bg: #556666;
+@btn-default-color: @text-color;
+@btn-default-border: rgba(0, 0, 0, 0.1);
+@link-hover-color: lighten(@link-color, 15%);
+@box-shadow-color: #252833;
+@webkit-scrollbar-track-bg-color: #2B3844;
+@webkit-scrollbar-thumb-bg-color: rgba(255, 255, 255, 0.2);
+@webkit-scrollbar-button-bg-color: rgba(0, 0, 0, 0.2);
+@webkit-scrollbar-corner-bg-color: black;
+
+
+// -- Theme variables for staging component --
+@staging-bg-color: #643A44;
+@staging-box-shadow-color: #252833;
+@staging-color: #B8A5A5;
+@staging-form-control-diabled-bg-color: rgba(64, 36, 43, 0.75);
+@staging-arrow-down-border-color: rgb(99, 57, 67);
+@staging-validationError-color: #D6542D;
+@staging-diffContainer-bg-color: rgba(255, 255, 255, 0.1);
+@staging-discard-color: rgba(255, 255, 255, 0.3);
+@staging-discard-hover-bg-color: #000;
+@staging-discard-hover-color: rgba(255, 255, 255, 0.9);
+@staging-ignore-color: rgba(255, 255, 255, 0.3);
+@staging-ignore-hover-bg-color: #55f;
+@staging-ignore-hover-color: rgba(255, 255, 255, 0.9);
+@staging-patch-bg-color: #279124;
+@staging-patch-color: rgba(255, 255, 255, 0.9);
+@staging-files-showingDiffs-color: #000;
+@staging-files-showingDiffs-bg-color: rgba(255, 255, 255, 0.1);
+@staging-files-name-color: rgba(255, 255, 255, 0.8);
+@staging-files-additions-color: #949494;
+@staging-files-deletions-color: #7B7B7B;
+@staging-files-conflicts-color: #DB12C0;
+@staging-files-markresolved-color: #DB12C0;
+@staging-files-markresolved-hover-color: #000;
+@staging-files-markresolved-hover-bg-color: #A445ED;
+@staging-files-launchmergetool-color: #DB55FF;
+@staging-files-launchmergetool-hover-color: #000;
+@staging-files-launchmergetool-hover-bg-color: #A477FF;
+@staging-checkmark-color: #fff;
+
+// -- Theme variables for stash component --
+@stash-bg-color: #55323C;
+
+// -- Theme variables for generic.less --
+@generic-form-control-color: rgba(255, 255, 255, 0.8);
+@generic-list-group-item-bg-color: rgba(0, 0, 0, 0.09);
+@generic-hr-border-color: rgba(255, 255, 255, 0.1);
+@generic-droparea-bg-color: #2B4C5C;
+
+// -- Theme variables for styles.less --
+@styles-glyphicon-circled-border-color: #686868;
+@styles-ui-autocomplete-bg-color: rgba(200, 210, 230, 1);
+@styles-ui-autocomplete-box-shadow-color: rgba(0, 0, 0, 0.2);
+@styles-ui-autocomplete-a-color: rgba(0, 0, 0, 0.6);
+@styles-ui-autocomplete-focus-bg-color: rgba(11, 26, 51, 1);
+@styles-ui-autocomplete-focus-color: #fff;
+
+
+// -- Theme variables for commit.less
+@commit-highlighted-box-shadow-color: rgba(0, 0, 0, 0.2);
+@commit-highlighted-bg-color: #4B5766;
+@commit-highlighted-arrow-border-color: #4A5665;
+@commit-selected-diff-wrapper-box-shadow-color: rgba(0, 0, 0, 0.15);
+@commit-selected-diff-inner-box-shadow-color: rgba(0, 0, 0, 0.2);
+@commit-box-shadow-border-color: #1E2029;
+@commit-box-arrow-border-color: #3b4552;
+@commit-box-color: #8F9FA6;
+@commit-box-bg-color: #4B5766;
+
+// -- Theme variables for commitdiff.less
+@commitdiff-file-bg-color: rgba(255, 255, 255, 0.16);
+@commitdiff-file-head-color: rgba(255, 255, 255, 0.79);
+@commitdiff-file-addition-color: #9BF3A9;
+@commitdiff-file-deletion-color: #EC9D93;
+@commitdiff-diff-bg-color: rgba(0, 0, 0, 0.11);
+@commitdiff-diff-color: rgba(255, 255, 255, 0.3);
