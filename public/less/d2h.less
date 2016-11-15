@@ -7,6 +7,7 @@
 * Last Update: Saturday 27 September 2014
 *
 */
+@import "variables-light.less";
 
 .d2h-wrapper {
   display: block;
@@ -31,18 +32,18 @@
 }
 
 .d2h-lines-added {
-  background-color: #ceffce;
-  border: 1px solid #b4e2b4;
-  color: #FFFFFF;
+  background-color: @d2h-lines-added-bg-color;
+  border: 1px solid @d2h-lines-added-border-color;
+  color: @d2h-lines-added-color;
   border-radius: 5px 0 0 5px;
   padding: 2px;
   width: 25px;
 }
 
 .d2h-lines-deleted {
-  background-color: #f7c8c8;
-  border: 1px solid #e9aeae;
-  color: #000000;
+  background-color: @d2h-lines-deleted-bg-color;
+  border: 1px solid @d2h-lines-deleted-border-color;
+  color: @d2h-lines-deleted-color;
   border-radius: 0 5px 5px 0;
   padding: 2px;
   width: 25px;
@@ -105,7 +106,7 @@
   display: inline-block;
   margin-top: -1px;
   text-decoration: none;
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: @d2h-line-del-bg-color;
 }
 
 .d2h-code-line ins,
@@ -113,7 +114,7 @@
   display: inline-block;
   margin-top: -1px;
   text-decoration: none;
-  background-color: rgba(255, 255, 255, 0.6);
+  background-color: @d2h-line-ins-bg-color;
 }
 
 .d2h-code-line-prefix {
@@ -142,18 +143,18 @@
   width: 52px;
   min-width: 65px;
   text-align: center;
-  background-color: #727a83;
-  color: rgba(0, 0, 0, 0.5);
+  background-color: @d2h-code-linenumber-bg-color;
+  color: @d2h-code-linenumber-color;
   border-width: 0 1px 0 1px;
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-left: 1px solid rgba(0, 0, 0, 0.34);
-  border-right: 1px solid rgba(0, 0, 0, 0.34);
+  border-left: 1px solid @d2h-code-linenumber-border-color;
+  border-right: 1px solid @d2h-code-linenumber-border-color;
 }
 
 .d2h-cntx {
-  color: rgba(255, 255, 255, 0.3);
+  color: @d2h-cntx-color;
 }
 
 .d2h-code-side-linenumber {
@@ -163,36 +164,36 @@
   min-width: 65px;
   text-align: center;
   height: 100%;
-  background-color: rgba(114, 122, 131, 1);
-  color: rgba(0, 0, 0, 0.5);
+  background-color: @d2h-code-side-linenumber-bg-color;
+  color: @d2h-code-side-linenumber-color;
   border-width: 0 1px 0 1px;
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-left: 1px solid rgba(0, 0, 0, 0.34);
-  border-right: 1px solid rgba(0, 0, 0, 0.34);
+  border-left: 1px solid @d2h-code-side-linenumber-border-color;
+  border-right: 1px solid @d2h-code-side-linenumber-border-color;
 }
 
 .d2h-del {
-  background-color: #E86756;
-  color: #FFFFFF;
+  background-color: @d2h-del-bg-color;
+  color: @d2h-del-color;
 
   &.d2h-code-side-linenumber {
-    color: rgba(0, 0, 0, 0.5);
+    color: @d2h-code-side-linenumber-color;
   }
 }
 
 .d2h-ins {
-  background-color: #66F27B;
-  color: #000000;
+  background-color: @d2h-ins-bg-color;
+  color: @d2h-ins-color;
 
   &.d2h-code-side-linenumber {
-    color: rgba(0, 0, 0, 0.5);
+    color: @d2h-code-side-linenumber-color;
   }
 }
 
 .d2h-info {
-  color: rgba(255, 255, 255, 0.3);
+  color: @d2h-info-color;
 }
 
 .d2h-code-line-ctn {

@@ -18,8 +18,8 @@ module.exports = function(grunt) {
     less: {
       production: {
         files: {
-          "public/css/styles.css": ["public/less/common.less", "public/less/dark/styles.less", "public/vendor/css/animate.css", "public/less/dark/d2h.less"],
-          "public/css/styles_light.css": ["public/less/common.less", "public/less/light/styles.less", "public/vendor/css/animate.css", "public/less/light/d2h.less"],
+          "public/css/styles.css": ["public/less/variables-common.less", "public/less/styles.less", "public/vendor/css/animate.css", "public/less/d2h.less"],
+          "public/css/styles_light.css": ["public/less/variables-common.less", "public/less/styles.less", "public/vendor/css/animate.css", "public/less/d2h.less"],
           "components/commit/commit.css": ["components/commit/commit.less"],
           "components/commitdiff/commitdiff.css": ["components/commitdiff/commitdiff.less"],
           "components/graph/graph.css": ["components/graph/graph.less"],
