@@ -1,3 +1,4 @@
+@import "public/less/light/variables.less";
 
 .home {
   .nux {
@@ -5,21 +6,21 @@
     .logo-large {
       margin-top: 20px;
       margin-bottom: 50px;
-    } 
+    }
   }
   .repository {
     position: relative;
     min-height: 62px;
     &.path-removed {
       .list-group-item-heading {
-        color: #CF5353;
+        color: @home-repository-path-removed-color;
       }
     }
     .glyphicon {
-      color: #686868;
+      color: @home-repository-glyphicon-color;
     }
     &:hover .glyphicon {
-      color: #A5A5A5;
+      color: @home-repository-glyphicon-hover-color;
     }
   }
 }

@@ -7,17 +7,17 @@
 .navbar {
   padding-top: 13px;
   z-index: 5;
-  box-shadow: 0px 15px 15px @box-shadow-color;
+  box-shadow: 0px 15px 15px @header-navbar-box-shadow-color;
   height: 81px;
 
   .backlink {
     margin-left: 9px;
     margin-top: 7px;
     position: absolute;
-    color: #686868;
+    color: @header-navbar-backlink-color;
     &:hover {
       text-decoration: none;
-      color: #A5A5A5;
+      color: @header-navbar-backlink-hover-color;
     }
     .glyphicon-arrow-left {
       -webkit-transition: opacity 0.5s ease-in-out;
@@ -58,7 +58,7 @@
     left: 300px;
     height: 0px;
     width: 0px;
-    border-bottom: 15px solid #242832;
+    border-bottom: 15px solid @header-navber-arrow-up-border-color;
     border-right: 15px solid transparent;
     border-left: 15px solid transparent;
   }

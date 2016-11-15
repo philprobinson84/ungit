@@ -62,7 +62,7 @@
         border-color: transparent;
       }
       &.focused {
-        border-color: #fff;
+        border-color: @graph-ref-focused-border-color;
       }
 
       &.current {
@@ -76,14 +76,14 @@
         }
       }
       &.remote {
-        color: #5DB4FF;
+        color: @graph-ref-remote-color;
       }
       &.tag {
-        color: #EEF266;
+        color: @graph-ref-tag-color;
       }
     }
     .graphAction {
-      color: #fff;
+      color: @graph-action-color;
       cursor: pointer;
       opacity: 1;
       transition: all 0.5s ease 0.2s;
@@ -118,38 +118,38 @@
         opacity: 0.5;
       }
       &.push {
-        background: rgba(61, 139, 255, 0.9);
+        background: @graph-action-push-background;
       }
       &.pull {
-        background: rgba(38, 189, 189, 0.9);
+        background: @graph-action-pull-background;
       }
       &.reset {
-        background: rgba(255, 129, 31, 0.9);
+        background: @graph-action-reset-background;
       }
       &.rebase {
-        background: rgba(65, 222, 60, 0.9);
+        background: @graph-action-rebase-background;
       }
       &.move {
         width: auto;
-        background: rgba(0, 0, 0, 0.1);
+        background: @graph-action-move-background;
       }
       &.merge {
-        background: rgba(208, 135, 212, 0.9);
+        background: @graph-action-merge-background;
       }
       &.checkout {
-        background: rgba(205, 219, 55, 0.9);
+        background: @graph-action-checkout-background;
       }
       &.delete {
-        background: rgba(214, 77, 56, 0.9);
+        background: @graph-action-delete-background;
       }
       &.cherry-pick {
-        background: rgba(110, 156, 110, 0.9);
+        background: @graph-action-cherry-pick-background;
       }
       &.uncommit {
-        background: rgba(158, 53, 20, 0.9);
+        background: @graph-action-uncommit-background;
       }
       &.revert {
-        background: rgba(179, 135, 43, 0.9);
+        background: @graph-action-revert-background;
       }
     }
     .newRef {
@@ -164,9 +164,9 @@
         padding: 0px;
         margin: 0px;
         margin-top: 9px;
-        color: rgba(255, 255, 255, 0.3);
+        color: @graph-branching-form-color;
         &:hover {
-          color: rgba(255, 255, 255, 0.8);
+          color: @graph-branching-form-hover-color;
         }
       }
       .form-inline {
