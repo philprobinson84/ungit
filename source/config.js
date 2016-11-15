@@ -135,8 +135,9 @@ const defaultConfig = {
   // A true value will use the default tool while a string value will use the tool of that specified name.
   mergeTool: false,
 
-  // Specifies whether the light theme will be used
-  lightThemeEnabled: false
+  // Specifies which theme will be used
+  // The value corresponds to the variables-<theme>.less file, where the value below specifies <theme>
+  theme: 'light'
 };
 
 // Works for now but should be moved to bin/ungit
@@ -190,7 +191,7 @@ let argv = yargs
 .describe('alwaysLoadActiveBranch', 'Always load with active checkout branch')
 .describe('numberOfNodesPerLoad', 'number of nodes to load for each git.log call')
 .describe('mergeTool', 'the git merge tool to use when resolving conflicts')
-.describe('lightThemeEnabled', 'enable light theme');
+.describe('theme', 'Specifies the theme to be used, default: dark. Other options include: light, inverse');
 
 // If not triggered by test, then do strict option check
 if (argv.$0.indexOf('mocha') === -1) {
