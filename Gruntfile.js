@@ -207,7 +207,7 @@ module.exports = function(grunt) {
     processhtml: {
       options: {
         data: {
-          theme: grunt.config.theme
+          theme: grunt.config('theme')
         }
       },
       default: {
