@@ -204,6 +204,18 @@ module.exports = function(grunt) {
         ]
       }
     },
+    processhtml: {
+      options: {
+        data: {
+          theme: grunt.config.theme
+        }
+      },
+      default: {
+        files: {
+          'public/index.html': ['public/htmltemplates/index.html']
+        }
+      }
+    },
     clean: {
       electron: ['./build'],
       coverage: ['./coverage'],
@@ -491,9 +503,10 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-clean');
   grunt.loadNpmTasks('grunt-mocha-istanbul');
   grunt.loadNpmTasks('grunt-babel');
+  grunt.loadNpmTasks('grunt-processhtml');
 
   // Default task, builds everything needed
-  grunt.registerTask('default', ['clean:babel', 'less:production', 'jshint', 'babel:prod', 'browserify-common', 'browserify-components', 'lineending:production', 'imageEmbed:default', 'copy:main', 'imagemin:default']);
+  grunt.registerTask('default', ['clean:babel', 'less:production', 'jshint', 'babel:prod', 'browserify-common', 'browserify-components', 'lineending:production', 'imageEmbed:default', 'copy:main', 'processhtml', 'imagemin:default']);
 
   // Run tests without compile (use watcher or manually build)
   grunt.registerTask('unittest', ['mochaTest']);
