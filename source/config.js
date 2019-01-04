@@ -7,6 +7,7 @@ const yargs = require('yargs');
 const homedir = require('os-homedir')();
 const winston = require('winston');
 const child_process = require('child_process');
+const semver = require('semver');
 
 const defaultConfig = {
 
@@ -58,9 +59,6 @@ const defaultConfig = {
   // Closes the server after x ms of inactivity. Mainly used by the clicktesting.
   autoShutdownTimeout: undefined,
 
-  // Maximum number of automatic restarts after a crash. Undefined == unlimited.
-  maxNAutoRestartOnCrash: undefined,
-
   // Don't fast forward git mergers. See git merge --no-ff documentation
   noFFMerge: true,
 
@@ -107,6 +105,9 @@ const defaultConfig = {
   // Don't show errors when the user is using a bad or undecidable git version
   gitVersionCheckOverride: false,
 
+  // Don't show upgrade message when the user is using an older version of ungit
+  ungitVersionCheckOverride: false,
+
   // Automatically does stash -> operation -> stash pop when you checkout, reset or cherry pick. This makes it
   // possible to perform those actions even when you have a dirty working directory.
   autoStashAndPop: true,
@@ -138,6 +139,30 @@ const defaultConfig = {
   // Specifies which theme will be used
   // The value corresponds to the variables-<theme>.less file, where the value below specifies <theme>
   theme: 'light'
+  // Preferred default diff type used. Can be `"textdiff"` or `"sidebysidediff"`.
+	diffType: undefined,
+
+  // Number of refs to show on git commit bubbles to limit too many refs to appear.
+  numRefsToShow: 5,
+
+  // Force gpg sign for tags and commits.  (additionally one can set up `git config commit.gpgsign true`
+  // instead of this flag)  more on this: https://help.github.com/articles/signing-commits-using-gpg/
+  isForceGPGSign: false,
+
+  // Array of local git repo paths to display at the ungit home page
+  defaultRepositories: [],
+
+  // a string of ip to bind to, default is `127.0.0.1`
+  ungitBindIp: '127.0.0.1',
+
+  // is front end animation enabled
+  isAnimate: true,
+
+  // disable progress bar (front end api)
+  isDisableProgressBar: false,
+
+  // git binary path, not including git binary path. (i.e. /bin or /usr/bin/)
+  gitBinPath: null
 };
 
 // Works for now but should be moved to bin/ungit
@@ -152,8 +177,13 @@ let argv = yargs
 .alias('o', 'gitVersionCheckOverride')
 .alias('v', 'version')
 .describe('o', 'Ignore git version check and allow ungit to run with possibly lower versions of git')
+.boolean('o')
+.describe('ungitVersionCheckOverride', 'Ignore check for older version of ungit')
+.boolean('ungitVersionCheckOverride')
 .describe('b', 'Launch a browser window with ungit when the ungit server is started. --no-b or --no-launchBrowser disables this')
+.boolean('b')
 .describe('cliconfigonly', 'Ignore the default configuration points and only use parameters sent on the command line')
+.boolean('cliconfigonly')
 .describe('port', 'The port ungit is exposed on')
 .describe('urlBase', 'The base URL ungit will be accessible from')
 .describe('rootPath', 'The root path ungit will be accessible from')
@@ -169,7 +199,6 @@ let argv = yargs
 .describe('maxConcurrentGitOperations', 'Maximum number of concurrent git operations')
 .describe('forcedLaunchPath', 'Define path to be used on open. Can be set to null to force the home screen')
 .describe('autoShutdownTimeout', 'Closes the server after x ms of inactivity. Mainly used by the clicktesting')
-.describe('maxNAutoRestartOnCrash', 'Maximum number of automatic restarts after a crash. Undefined == unlimited')
 .describe('noFFMerge', 'Don\'t fast forward git mergers. See git merge --no-ff documentation')
 .describe('autoFetch', 'Automatically fetch from remote when entering a repository using ungit')
 .describe('dev', 'Used for development purposes')
@@ -191,23 +220,43 @@ let argv = yargs
 .describe('alwaysLoadActiveBranch', 'Always load with active checkout branch')
 .describe('numberOfNodesPerLoad', 'number of nodes to load for each git.log call')
 .describe('mergeTool', 'the git merge tool to use when resolving conflicts')
+.describe('diffType', 'Prefered default diff type used. Can be `"textdiff"` or `"sidebysidediff"`.')
+.describe('numRefsToShow', 'Number of refs to show on git commit bubbles to limit too many refs to appear.')
+.describe('isForceGPGSign', 'Force gpg sign for tags and commits.')
+.describe('defaultRepositories', 'Array of local git repo paths to display at the ungit home page')
+.describe('ungitBindIp', 'a string of ip to bind to, default is `127.0.0.1`')
+.describe('isAnimate', 'is front end animation enabled')
+.boolean('isAnimate')
+.describe('isDisableProgressBar', 'disable progress bar (front end api)')
+.boolean('isDisableProgressBar')
+.describe('gitBinPath', 'git binary path, not including git binary path. (i.e. /bin or /usr/bin/)')
 .describe('theme', 'Specifies the theme to be used, default: dark. Other options include: light, inverse');
+;
 
-// If not triggered by test, then do strict option check
-if (argv.$0.indexOf('mocha') === -1) {
-  argv = argv.strict();
-}
+const argvConfig = argv.argv;
 
 // For testing, $0 is grunt.  For credential-parser test, $0 is node
-// When ungit is started normaly, $0 == ungit, and non-hyphenated options exists, show help and exit.
-if (argv.$0 === 'ungit' && argv._ && argv._.length > 0) {
+// When ungit is started normally, $0 == ungit, and non-hyphenated options exists, show help and exit.
+if (argvConfig.$0.indexOf('ungit') > -1 && argvConfig._ && argvConfig._.length > 0) {
   yargs.showHelp();
   process.exit(0);
-} else if (argv.cliconfigonly) {
-  module.exports = argv.default(defaultConfig).argv;
-} else {
-  module.exports = rc('ungit', argv.default(defaultConfig).argv);
 }
+
+let rcConfig = {};
+if (!argvConfig.cliconfigonly) {
+  try {
+    rcConfig = rc('ungit');
+    // rc return additional options that must be ignored
+    delete rcConfig['config'];
+    delete rcConfig['configs'];
+  } catch (err) {
+    winston.error(`Stop at reading ~/.ungitrc because ${err}`);
+    process.exit(0);
+  }
+}
+
+module.exports = argv.default(defaultConfig).default(rcConfig).argv;
+
 module.exports.homedir = homedir;
 
 let currentRootPath = module.exports.rootPath;
@@ -256,3 +305,5 @@ if (fs.existsSync(path.join(__dirname, '..', '.git'))){
 } else {
   module.exports.ungitDevVersion = module.exports.ungitPackageVersion;
 }
+
+module.exports.isGitOptionalLocks = semver.satisfies(module.exports.gitVersion, '2.15.0');

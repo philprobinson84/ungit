@@ -1,21 +1,36 @@
 sudo: required
 language: node_js
 node_js:
-  - "4.1"
-  - "5.3"
-  - "6.0"
+  - "7.10"
+  - "8.11"
+  - "9.11"
+  - "node"
+branches:
+  only:
+    - master
 env:
   global:
     - CXX=g++-4.8
   matrix:
     - GIT_VERSION=default
     - GIT_VERSION=edge
+matrix:
+  exclude:
+    - node_js: "7.10"
+      env: GIT_VERSION=edge
+    - node_js: "8.11"
+      env: GIT_VERSION=edge
 addons:
   apt:
     sources:
-    - ubuntu-toolchain-r-test
+      - ubuntu-toolchain-r-test
     packages:
-    - g++-4.8
+      - g++-4.8
+      - xvfb
+install:
+  - export DISPLAY=':99.0'
+  - Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+  - npm install --unsafe-perm=true --allow-root
 before_script:
   - npm install -g grunt-cli
   - if [ "$GIT_VERSION" = "edge" ]; then sudo add-apt-repository ppa:git-core/ppa -y && sudo apt-get update -q && sudo apt-get install -y git; fi
@@ -23,3 +38,5 @@ before_script:
   - git config --global user.name "Test testy"
   - git version
   - grunt -d
+after_script:
+  - grunt travisnpmpublish

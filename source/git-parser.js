@@ -1,5 +1,6 @@
 const moment = require('moment');
 const fs = require('fs');
+const path = require('path');
 const fileType = require('./utils/file-type.js');
 const _ = require('lodash')
 
@@ -82,6 +83,20 @@ const gitLogHeaders = {
       currentCommmit.reflogAuthorName = author;
     }
   },
+  'gpg': (currentCommit, data) => {
+    if (data.startsWith('Signature made')) {
+      // extract sign date
+      currentCommit.signatureDate = data.slice('Signature made '.length);
+    } else if (data.indexOf('Good signature from') > -1) {
+      // fully verified.
+      currentCommit.signatureMade = data.slice('Good signature from '.length)
+        .replace('[ultimate]', '')
+        .trim();
+    } else if (data.indexOf('Can\'t check signature') > -1) {
+      // pgp signature attempt is made but failed to verify
+      delete currentCommit.signatureDate;
+    }
+  }
 };
 exports.parseGitLog = (data) => {
   const commits = [];
@@ -221,10 +236,11 @@ exports.parseGitSubmodule = (text, args) => {
     } else {
       const parts = line.split("=");
       const key = parts[0].trim();
-      const value = parts.slice(1).join("=").trim();
-      submodule[key] = value;
+      let value = parts.slice(1).join("=").trim();
 
-      if (key == "url") {
+      if (key == "path") {
+        value = path.normalize(value);
+      } else if (key == "url") {
         // keep a reference to the raw url
         let url = submodule.rawUrl = value;
 
@@ -237,12 +253,16 @@ exports.parseGitSubmodule = (text, args) => {
           }
         }
 
-        submodule.url = url;
+        value = url;
       }
+
+      submodule[key] = value;
     }
   });
 
-  return submodules;
+  let sorted_submodules = submodules.sort((a,b) => a.name.localeCompare(b.name));
+
+  return sorted_submodules;
 }
 
 const updatePatchHeader = (result, lastHeaderIndex, ignoredDiffCountTotal, ignoredDiffCountCurrent) => {

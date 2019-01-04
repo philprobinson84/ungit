@@ -9,6 +9,13 @@ const rimraf = require('rimraf');
 const _ = require('lodash');
 const gitPromise = require('./git-promise');
 const fs = require('./utils/fs-async');
+const ignore = require('ignore');
+const Bluebird = require('bluebird');
+const crypto = require('crypto');
+
+const isMac = /^darwin/.test(process.platform);
+const isWindows = /^win/.test(process.platform);
+const tenMinTimeoutMs = 10 * 60 * 1000;
 
 exports.pathPrefix = '';
 
@@ -24,41 +31,90 @@ exports.registerApi = (env) => {
 
   if (io) {
     io.sockets.on('connection', (socket) => {
-      socket.on('disconnect', () => {
-        if (socket.watcher) {
-          socket.watcher.close();
-          socket.watcher = null;
-          winston.info(`Stop watching ${socket.watcherPath}`);
-        }
-      });
+      socket.on('disconnect', () => { stopDirectoryWatch(socket); });
       socket.on('watch', (data, callback) => {
-        if (socket.watcher) {
-          socket.leave(socket.watcherPath);
-          socket.watcher.close(); // only one watcher per socket
-          winston.info(`Stop watching ${socket.watcherPath}`);
-        }
-        socket.join(path.normalize(data.path)); // join room for this path
-        socket.watcherPath = data.path;
-        const workingTreeChanged = _.debounce(() => {
-          socket.emit('working-tree-changed', { repository: data.path });
-        }, 200);
-        try {
-          socket.watcher = fs.watch(data.path, (event, filename) => {
-            // The .git dir changes on for instance 'git status', so we
-            // can't trigger a change here (since that would lead to an endless
-            // loop of the client getting the change and then requesting the new data)
-            if (!filename || (filename != '.git' && filename.indexOf('.git/') != 0))
-              workingTreeChanged();
-          });
-          winston.info(`Start watching ${socket.watcherPath}`);
-        } catch(err) {
-          // Sometimes fs.watch crashes with errors such as ENOSPC (no space available)
-          // which is pretty weird, but hard to do anything about, so we just log them here.
-          usageStatistics.addEvent('fs-watch-exception');
-        }
-        if (callback) callback();
+        stopDirectoryWatch(socket); // clean possibly lingering connections
+        socket.watcherPath = path.normalize(data.path)
+        socket.join(socket.watcherPath); // join room for this path
+
+        fs.readFileAsync(path.join(socket.watcherPath, ".gitignore"))
+          .then((ignoreContent) => socket.ignore = ignore().add(ignoreContent.toString()))
+          .catch(() => {})
+          .then(() => {
+            socket.watcher = [];
+            return watchPath(socket, '.', {'recursive': true});
+          }).then(() => {
+            if (!isMac && !isWindows) {
+              // recursive fs.watch only works on mac and windows
+              const promises = [];
+              promises.push(watchPath(socket, path.join('.git', 'HEAD')));
+              promises.push(watchPath(socket, path.join('.git', 'refs', 'heads')));
+              promises.push(watchPath(socket, path.join('.git', 'refs', 'remotes')));
+              promises.push(watchPath(socket, path.join('.git', 'refs', 'tags')));
+              return Bluebird.all(promises);
+            }
+          }).catch((err) => {
+            // Sometimes fs.watch crashes with errors such as ENOSPC (no space available)
+            // which is pretty weird, but hard to do anything about, so we just log them here.
+            usageStatistics.addEvent('fs-watch-exception');
+            return null;
+          }).finally(callback);
       });
     });
+  }
+
+  const watchPath = (socket, subfolderPath, options) => {
+    const pathToWatch = path.join(socket.watcherPath, subfolderPath);
+    winston.info(`Start watching ${pathToWatch}`);
+    return fs.isExists(pathToWatch).then((isExists) => {
+        // Sometimes necessary folders, '.../.git/refs/heads' and etc, are not created on git init
+        if (!isExists) {
+          winston.debug(`intended folder to watch doesn't exists, creating: ${pathToWatch}`);
+          return new Bluebird((resolve, reject) => {
+            mkdirp(pathToWatch, (err) => {
+              if (err) reject(err);
+              else resolve();
+            });
+          });
+        }
+      }).then(() => {
+        socket.watcher.push(fs.watch(pathToWatch, options || {}, (event, filename) => {
+          if (!filename) return;
+          const filePath = path.join(subfolderPath, filename);
+          winston.debug(`File change: ${filePath}`);
+          if (isFileWatched(filePath, socket.ignore)) {
+            winston.info(`${filePath} triggered refresh for ${socket.watcherPath}`);
+            emitGitDirectoryChanged(socket.watcherPath);
+            emitWorkingTreeChanged(socket.watcherPath);
+          }
+        }));
+      });
+  };
+
+  const stopDirectoryWatch = (socket) => {
+    socket.leave(socket.watcherPath);
+    socket.ignore = undefined;
+    (socket.watcher || []).forEach((watcher) => watcher.close());
+    winston.info(`Stop watching ${socket.watcherPath}`);
+  }
+
+  // The .git dir changes on for instance 'git status', so we
+  // can't trigger a change here (since that would lead to an endless
+  // loop of the client getting the change and then requesting the new data)
+  const isFileWatched = (filename, ignore) => {
+    if (ignore && ignore.filter(filename).length == 0) {
+      return false;  // ignore files that are in .gitignore
+    } else if (filename.endsWith(".lock")) {
+      return false;
+    } else if (filename.indexOf(path.join(".git", "refs")) > -1) {
+      return true;   // trigger for all changes under refs
+    } else if (filename == path.join(".git", "HEAD")) {
+      return true;   // Explicitly return true for ".git/HEAD" for branch changes
+    } else if (filename.indexOf(".git") > -1) {
+      return false;  // Ignore other changes under ".git/*"
+    } else {
+      return true;
+    }
   }
 
   const ensurePathExists = (req, res, next) => {
@@ -87,13 +143,13 @@ exports.registerApi = (env) => {
       io.sockets.in(path.normalize(repoPath)).emit('working-tree-changed', { repository: repoPath });
       winston.info('emitting working-tree-changed to sockets, manually triggered');
     }
-  }, 250, { 'maxWait': 1000 })
+  }, 500, { 'maxWait': 2000 })
   const emitGitDirectoryChanged = _.debounce((repoPath) => {
     if (io) {
       io.sockets.in(path.normalize(repoPath)).emit('git-directory-changed', { repository: repoPath });
       winston.info('emitting git-directory-changed to sockets, manually triggered');
     }
-  }, 250, { 'maxWait': 1000 })
+  }, 500, { 'maxWait': 2000 })
 
   const autoStashExecuteAndPop = (commands, repoPath, allowedCodes, outPipe, inPipe, timeout) => {
     if (config.autoStashAndPop) {
@@ -112,9 +168,13 @@ exports.registerApi = (env) => {
       });
   }
 
-  const credentialsOption = (socketId) => {
+  const credentialsOption = (socketId, remote) => {
+    let portAndRootPath = `${config.port}`;
+    if (config.rootPath) {
+      portAndRootPath = `${config.port}${config.rootPath}`
+    }
     const credentialsHelperPath = path.resolve(__dirname, '..', 'bin', 'credentials-helper').replace(/\\/g, '/');
-    return ['-c', `credential.helper=${credentialsHelperPath} ${socketId} ${config.port}`];
+    return ['-c', `credential.helper=${credentialsHelperPath} ${socketId} ${portAndRootPath} ${remote}`];
   }
 
   const getNumber = (value, nullValue) => {
@@ -141,8 +201,14 @@ exports.registerApi = (env) => {
 
     let url = req.body.url.trim();
     if (url.indexOf('git clone ') == 0) url = url.slice('git clone '.length);
+
+    const commands = ['clone', url, req.body.destinationDir.trim()];
+    if (req.body.isRecursiveSubmodule) {
+      commands.push('--recurse-submodules');
+    }
+
     const task = gitPromise({
-      commands: credentialsOption(req.body.socketId).concat(['clone', url, req.body.destinationDir.trim()]),
+      commands: credentialsOption(req.body.socketId, url).concat(commands),
       repoPath: req.body.path,
       timeout: timeoutMs
     }).then(() => {
@@ -155,17 +221,16 @@ exports.registerApi = (env) => {
 
   app.post(`${exports.pathPrefix}/fetch`, ensureAuthenticated, ensurePathExists, ensureValidSocketId, (req, res) => {
     // Allow a little longer timeout on fetch (10min)
-    const timeoutMs = 10 * 60 * 1000;
-    if (res.setTimeout) res.setTimeout(timeoutMs);
+    if (res.setTimeout) res.setTimeout(tenMinTimeoutMs);
 
     const task = gitPromise({
-      commands: credentialsOption(req.body.socketId).concat([
+      commands: credentialsOption(req.body.socketId, req.body.remote).concat([
           'fetch',
           req.body.remote,
           req.body.ref ? req.body.ref : '',
           config.autoPruneOnFetch ? '--prune' : '']),
       repoPath: req.body.path,
-      timeout: timeoutMs
+      timeout: tenMinTimeoutMs
     });
 
     jsonResultOrFailProm(res, task)
@@ -174,16 +239,15 @@ exports.registerApi = (env) => {
 
   app.post(`${exports.pathPrefix}/push`, ensureAuthenticated, ensurePathExists, ensureValidSocketId, (req, res) => {
     // Allow a little longer timeout on push (10min)
-    const timeoutMs = 10 * 60 * 1000;
-    if (res.setTimeout) res.setTimeout(timeoutMs);
+    if (res.setTimeout) res.setTimeout(tenMinTimeoutMs);
     const task = gitPromise({
-      commands: credentialsOption(req.body.socketId).concat([
+      commands: credentialsOption(req.body.socketId, req.body.remote).concat([
           'push',
           req.body.remote,
           (req.body.refSpec ? req.body.refSpec : 'HEAD') + (req.body.remoteBranch ? `:${req.body.remoteBranch}` : ''),
           (req.body.force ? '-f' : '')]),
       repoPath: req.body.path,
-      timeout: timeoutMs
+      timeout: tenMinTimeoutMs
     });
 
     jsonResultOrFailProm(res, task)
@@ -197,7 +261,7 @@ exports.registerApi = (env) => {
   });
 
   app.get(`${exports.pathPrefix}/diff`, ensureAuthenticated, ensurePathExists, (req, res) => {
-    var isIgnoreWhiteSpace = req.query.whiteSpace === "true" ? true : false;
+    const isIgnoreWhiteSpace = req.query.whiteSpace === "true" ? true : false;
     jsonResultOrFailProm(res, gitPromise.diffFile(req.query.path, req.query.file, req.query.sha1, isIgnoreWhiteSpace));
   });
 
@@ -227,7 +291,7 @@ exports.registerApi = (env) => {
   });
 
   app.post(`${exports.pathPrefix}/commit`, ensureAuthenticated, ensurePathExists, (req, res) => {
-    jsonResultOrFailProm(res, gitPromise.commit(req.body.path, req.body.amend, req.body.message, req.body.files))
+    jsonResultOrFailProm(res, gitPromise.commit(req.body.path, req.body.amend, req.body.emptyCommit, req.body.message, req.body.files))
       .then(emitGitDirectoryChanged.bind(null, req.body.path))
       .then(emitWorkingTreeChanged.bind(null, req.body.path));
   });
@@ -246,7 +310,7 @@ exports.registerApi = (env) => {
       .finally(emitWorkingTreeChanged.bind(null, req.body.path));
   });
 
-  app.get(`${exports.pathPrefix}/log`, ensureAuthenticated, ensurePathExists, (req, res) => {
+  app.get(`${exports.pathPrefix}/gitlog`, ensureAuthenticated, ensurePathExists, (req, res) => {
     const limit = getNumber(req.query.limit, config.numberOfNodesPerLoad || 25);
     const skip = getNumber(req.query.skip, 0);
     const task = gitPromise.log(req.query.path, limit, skip, 100)
@@ -283,8 +347,51 @@ exports.registerApi = (env) => {
     jsonResultOrFailProm(res, task);
   });
 
+  app.get(`${exports.pathPrefix}/refs`, ensureAuthenticated, ensurePathExists, (req, res) => {
+    if (res.setTimeout) res.setTimeout(tenMinTimeoutMs);
+
+    const task = gitPromise(['remote'], req.query.path)
+      .then((remoteText) => {
+        const remotes = remoteText.trim().split('\n');
+
+        // making calls serially as credential helpers may get confused to which cred to get.
+        return Bluebird.each(remotes, (remote) => {
+          if (!remote || remote === '') return;
+          return gitPromise({
+            commands: credentialsOption(req.query.socketId, remote).concat(['fetch', remote]),
+            repoPath: req.query.path,
+            timeout: tenMinTimeoutMs
+          }).catch((e) => winston.warn("err during remote fetch for /refs", e)) // ignore fetch err as it is most likely credential
+        });
+      }).then(() => gitPromise(['show-ref', '-d'], req.query.path))
+      // On new fresh repos, empty string is returned but has status code of error, simply ignoring them
+      .catch((e) => { if (e.message !== '') throw e; })
+      .then((refs) => {
+        const results = [];
+        if (refs) {
+          refs.trim().split('\n').forEach((n) => {
+            const splitted = n.split(' ');
+            const sha1 = splitted[0]
+            const name = splitted[1]
+            if (name.indexOf('refs/tags') > -1 && name.indexOf('^{}') > -1) {
+              results[results.length - 1].sha1 = sha1;
+            } else {
+              results.push({
+                name: name,
+                sha1: sha1
+              });
+            }
+          });
+        }
+        return results;
+      });
+    jsonResultOrFailProm(res, task);
+  });
+
   app.get(`${exports.pathPrefix}/branches`, ensureAuthenticated, ensurePathExists, (req, res) => {
-    jsonResultOrFailProm(res, gitPromise(['branch'], req.query.path).then(gitParser.parseGitBranches));
+    const isLocalBranchOnly = req.query.isLocalBranchOnly == 'false';
+    jsonResultOrFailProm(res, gitPromise(['branch', isLocalBranchOnly ? '-a' : ''], req.query.path)
+      .then(gitParser.parseGitBranches));
   });
 
   app.post(`${exports.pathPrefix}/branches`, ensureAuthenticated, ensurePathExists, (req, res) => {
@@ -300,7 +407,7 @@ exports.registerApi = (env) => {
   });
 
   app.delete(`${exports.pathPrefix}/remote/branches`, ensureAuthenticated, ensurePathExists, ensureValidSocketId, (req, res) => {
-    const commands = credentialsOption(req.query.socketId).concat(['push', req.query.remote, `:${req.query.name.trim()}`]);
+    const commands = credentialsOption(req.query.socketId, req.query.remote).concat(['push', req.query.remote, `:${req.query.name.trim()}`]);
     const task = gitPromise(commands, req.query.path)
       .catch(err => {
         if (!(err.stderr && err.stderr.indexOf("remote ref does not exist") > -1)) {
@@ -319,7 +426,7 @@ exports.registerApi = (env) => {
   });
 
   app.get(`${exports.pathPrefix}/remote/tags`, ensureAuthenticated, ensurePathExists, ensureValidSocketId, (req, res) => {
-    const task = gitPromise(credentialsOption(req.query.socketId).concat(['ls-remote', '--tags', req.query.remote]), req.query.path)
+    const task = gitPromise(credentialsOption(req.query.socketId, req.query.remote).concat(['ls-remote', '--tags', req.query.remote]), req.query.path)
       .then(gitParser.parseGitLsRemote)
       .then((result) => {
         result.forEach((r) => { r.remote = req.query.remote; });
@@ -329,7 +436,10 @@ exports.registerApi = (env) => {
   });
 
   app.post(`${exports.pathPrefix}/tags`, ensureAuthenticated, ensurePathExists, (req, res) => {
-    const commands = ['tag', (req.body.force ? '-f' : ''), '-a', req.body.name.trim(), '-m', req.body.name.trim(), (req.body.sha1 || 'HEAD').trim()];
+    const annotateFlag = (config.isForceGPGSign ? '-s' : '-a');
+    const forceFlag = (req.body.force ? '-f' : '');
+    const sha1 = (req.body.sha1 || 'HEAD').trim();
+    const commands = ['tag', forceFlag, annotateFlag, req.body.name.trim(), '-m', req.body.name.trim(), sha1];
 
     jsonResultOrFailProm(res, gitPromise(commands, req.body.path))
       .finally(emitGitDirectoryChanged.bind(null, req.body.path));
@@ -341,9 +451,12 @@ exports.registerApi = (env) => {
   });
 
   app.delete(`${exports.pathPrefix}/remote/tags`, ensureAuthenticated, ensurePathExists, (req, res) => {
-    const commands = credentialsOption(req.query.socketId).concat(['push', `${req.query.remote} :"refs/tags${req.query.name.trim()}"`]);
+    const commands = credentialsOption(req.query.socketId, req.query.remote).concat(['push', req.query.remote, `:refs/tags/${req.query.name.trim()}`]);
+    const task = gitPromise(['tag', '-d', req.query.name.trim()], req.query.path)
+      .catch(() => {})  // might have already deleted, so ignoring error
+      .then(() => gitPromise(commands, req.query.path))
 
-    jsonResultOrFailProm(res, gitPromise(commands, req.query.path))
+    jsonResultOrFailProm(res, task)
       .finally(emitGitDirectoryChanged.bind(null, req.query.path));
   });
 
@@ -405,6 +518,11 @@ exports.registerApi = (env) => {
       .finally(emitWorkingTreeChanged.bind(null, req.body.path));
   });
 
+  app.post(`${exports.pathPrefix}/squash`, ensureAuthenticated, ensurePathExists, (req, res) => {
+    jsonResultOrFailProm(res, gitPromise(['merge', '--squash', req.body.target.trim()], req.body.path))
+      .finally(emitGitDirectoryChanged.bind(null, req.body.path))
+      .finally(emitWorkingTreeChanged.bind(null, req.body.path));
+  });
 
   app.post(`${exports.pathPrefix}/rebase`, ensureAuthenticated, ensurePathExists, (req, res) => {
     jsonResultOrFailProm(res, gitPromise(['rebase', req.body.onto.trim()], req.body.path))
@@ -425,7 +543,7 @@ exports.registerApi = (env) => {
   });
 
   app.post(`${exports.pathPrefix}/resolveconflicts`, ensureAuthenticated, ensurePathExists, (req, res) => {
-    console.log('resolve conflicts');
+    winston.info('resolve conflicts');
     jsonResultOrFailProm(res, gitPromise.resolveConflicts(req.body.path, req.body.files))
       .then(emitWorkingTreeChanged.bind(null, req.body.path));
   });
@@ -510,7 +628,7 @@ exports.registerApi = (env) => {
   });
 
   app.delete(`${exports.pathPrefix}/stashes/:id`, ensureAuthenticated, ensurePathExists, (req, res) => {
-    const type = req.query.pop === 'true' ? 'pop' : 'drop';
+    const type = req.query.apply === 'true' ? 'apply' : 'drop';
     jsonResultOrFailProm(res, gitPromise(['stash', type, `stash@{${req.params.id}}`], req.query.path))
       .finally(emitGitDirectoryChanged.bind(null, req.query.path))
       .finally(emitWorkingTreeChanged.bind(null, req.query.path));
@@ -531,6 +649,7 @@ exports.registerApi = (env) => {
       return;
     }
     const socket = socketsById[req.query.socketId];
+    const remote = req.query.remote;
     if (!socket) {
       // We're using the socket to display an authentication dialog in the ui,
       // so if the socket is closed/unavailable we pretty much can't get the username/password.
@@ -538,7 +657,7 @@ exports.registerApi = (env) => {
       res.status(400).json({ errorCode: 'socket-unavailable' });
     } else {
       socket.once('credentials', (data) => res.json(data));
-      socket.emit('request-credentials');
+      socket.emit('request-credentials', {remote: remote});
     }
   });
 
@@ -554,9 +673,30 @@ exports.registerApi = (env) => {
     });
   });
 
+  app.get(`${exports.pathPrefix}/gitignore`, ensureAuthenticated, ensurePathExists, (req, res) => {
+    fs.readFileAsync(path.join(req.query.path, ".gitignore"))
+      .then((ignoreContent) => res.status(200).json({ content: ignoreContent.toString() }))
+      .catch((e) => {
+        if (e && e.message && e.message.indexOf('no such file or directory') > -1) {
+          res.status(200).json({ content: '' });
+        } else {
+          res.status(500).json(e);
+        }
+      });
+  });
+  app.put(`${exports.pathPrefix}/gitignore`, ensureAuthenticated, ensurePathExists, (req, res) => {
+    if (!req.body.data || req.body.data == '') {
+      return res.status(500).json({ message: "Invalid .gitignore content"});
+    }
+    fs.writeFileAsync(path.join(req.body.path, ".gitignore"), req.body.data)
+      .then(() => res.status(200).json({}))
+      .finally(emitGitDirectoryChanged.bind(null, req.body.path))
+      .catch((e) => res.status(500).json(e))
+  });
+
   if (config.dev) {
     app.post(`${exports.pathPrefix}/testing/createtempdir`, ensureAuthenticated, (req, res) => {
-      temp.mkdir('test-temp-dir', (err, path) => res.json({ path: path }));
+      temp.mkdir('test-temp-dir', (err, tempPath) => res.json({ path: path.normalize(tempPath) }));
     });
     app.post(`${exports.pathPrefix}/testing/createfile`, ensureAuthenticated, (req, res) => {
       const content = req.body.content ? req.body.content : (`test content\n${Math.random()}\n`);

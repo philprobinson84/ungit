@@ -1,5 +1,6 @@
 var ko = require('knockout');
 var components = require('ungit-components');
+var programEvents = require('ungit-program-events');
 var GitNodeViewModel = require('./git-node');
 var GitRefViewModel = require('./git-ref');
 var _ = require('lodash');
@@ -18,11 +19,6 @@ function GraphViewModel(server, repoPath) {
   this.skip = ko.observable(0);
   this.server = server;
   this.currentRemote = ko.observable();
-  this.nodesLoader = components.create('progressBar', {
-    predictionMemoryKey: 'gitgraph-' + self.repoPath(),
-    fallbackPredictedTimeMs: 1000,
-    temporary: true
-  });
   this.nodes = ko.observableArray();
   this.edges = ko.observableArray();
   this.refs = ko.observableArray();
@@ -73,10 +69,10 @@ function GraphViewModel(server, repoPath) {
     }
   });
 
-  this.loadNodesFromApiThrottled = _.throttle(this.loadNodesFromApi.bind(this), 500);
-  this.updateBranchesThrottled = _.throttle(this.updateBranches.bind(this), 500);
-  this.loadNodesFromApiThrottled();
-  this.updateBranchesThrottled();
+  this.loadNodesFromApiThrottled = _.throttle(this.loadNodesFromApi.bind(this), 1000);
+  this.updateBranchesThrottled = _.throttle(this.updateBranches.bind(this), 1000);
+  this.loadNodesFromApi();
+  this.updateBranches();
   this.graphWidth = ko.observable();
   this.graphHeight = ko.observable(800);
 }
@@ -104,19 +100,23 @@ GraphViewModel.prototype.getRef = function(ref, constructIfUnavailable) {
   return refViewModel;
 }
 
-GraphViewModel.prototype.loadNodesFromApi = function(callback) {
+GraphViewModel.prototype.loadNodesFromApi = function() {
   var self = this;
+  var nodeSize = self.nodes().length;
 
-  this.nodesLoader.start();
-  this.server.getPromise('/log', { path: this.repoPath(), limit: this.limit(), skip: this.skip() })
+  return this.server.getPromise('/gitlog', { path: this.repoPath(), limit: this.limit(), skip: this.skip() })
     .then(function(log) {
-      var nodes = log.nodes ? log.nodes : [];
+      // set new limit and skip
       self.limit(parseInt(log.limit));
       self.skip(parseInt(log.skip));
-      nodes = self.computeNode(nodes.map(function(logEntry) {
-          return self.getNode(logEntry.sha1, logEntry);
-        }));
-
+      return log.nodes || [];
+    }).then(function(nodes) {
+      // create and/or calculate nodes
+      return self.computeNode(nodes.map((logEntry) => {
+        return self.getNode(logEntry.sha1, logEntry);     // convert to node object
+      }));
+    }).then(function(nodes) {
+      // create edges
       var edges = [];
       nodes.forEach(function(node) {
         node.parents().forEach(function(parentSha1) {
@@ -127,14 +127,16 @@ GraphViewModel.prototype.loadNodesFromApi = function(callback) {
 
       self.edges(edges);
       self.nodes(nodes);
-
       if (nodes.length > 0) {
         self.graphHeight(nodes[nodes.length - 1].cy() + 80);
       }
       self.graphWidth(1000 + (self.heighstBranchOrder * 90));
-    }).finally(function() {
-      self.nodesLoader.stop();
-      if (callback) callback();
+      programEvents.dispatch({ event: 'init-tooltip' });
+    }).catch((e) => this.server.unhandledRejection(e))
+    .finally(function() {
+      if (window.innerHeight - self.graphHeight() > 0 && nodeSize != self.nodes().length) {
+        self.scrolledToEnd();
+      }
     });
 }
 
@@ -149,9 +151,7 @@ GraphViewModel.prototype.traverseNodeLeftParents = function(node, callback) {
 GraphViewModel.prototype.computeNode = function(nodes) {
   var self = this;
 
-  if (!nodes) {
-    nodes = this.nodes();
-  }
+  nodes = nodes || this.nodes();
 
   this.markNodesIdeologicalBranches(this.refs(), nodes, this.nodesById);
 
@@ -163,9 +163,11 @@ GraphViewModel.prototype.computeNode = function(nodes) {
   }
 
   // Filter out nodes which doesn't have a branch (staging and orphaned nodes)
-  nodes = nodes.filter(function(node) { return (node.ideologicalBranch() && !node.ideologicalBranch().isStash) || node.ancestorOfHEADTimeStamp == updateTimeStamp; })
+  nodes = nodes.filter(function(node) {
+    return (node.ideologicalBranch() && !node.ideologicalBranch().isStash) || node.ancestorOfHEADTimeStamp == updateTimeStamp;
+  });
 
-  var branchSlots = [];
+  var branchSlotCounter = this.HEAD() ? 1 : 0;
 
   // Then iterate from the bottom to fix the orders of the branches
   for (var i = nodes.length - 1; i >= 0; i--) {
@@ -173,26 +175,20 @@ GraphViewModel.prototype.computeNode = function(nodes) {
     if (node.ancestorOfHEADTimeStamp == updateTimeStamp) continue;
     var ideologicalBranch = node.ideologicalBranch();
 
-    // First occurence of the branch, find an empty slot for the branch
+    // First occurrence of the branch, find an empty slot for the branch
     if (ideologicalBranch.lastSlottedTimeStamp != updateTimeStamp) {
       ideologicalBranch.lastSlottedTimeStamp = updateTimeStamp;
-      var slot = branchSlots.indexOf(undefined);
-      if (slot === -1) {
-        branchSlots.push(ideologicalBranch);
-        slot = branchSlots.length - 1;
-      }
-      ideologicalBranch.branchOrder = slot;
-      branchSlots[slot] = slot;
+      ideologicalBranch.branchOrder = branchSlotCounter++
     }
 
     node.branchOrder(ideologicalBranch.branchOrder);
-    self.heighstBranchOrder = Math.max(self.heighstBranchOrder, node.branchOrder());
   }
 
+  self.heighstBranchOrder = branchSlotCounter - 1;
   var prevNode;
   nodes.forEach(function(node) {
-    node.branchOrder(branchSlots.length - node.branchOrder());
     node.ancestorOfHEAD(node.ancestorOfHEADTimeStamp == updateTimeStamp);
+    if (node.ancestorOfHEAD()) node.branchOrder(0);
     node.aboveNode = prevNode;
     if (prevNode) prevNode.belowNode = node;
     prevNode = node;
@@ -283,20 +279,39 @@ GraphViewModel.prototype.onProgramEvent = function(event) {
 }
 GraphViewModel.prototype.updateBranches = function() {
   var self = this;
-  this.server.get('/checkout', { path: this.repoPath() }, function(err, branch) {
-    if (err && err.errorCode == 'not-a-repository') return true;
-    if (err) return;
-    self.checkedOutBranch(branch);
-  });
+
+  this.server.getPromise('/checkout', { path: this.repoPath() })
+    .then(function(res) { self.checkedOutBranch(res); })
+    .catch(function(err) {
+      if (err.errorCode != 'not-a-repository') self.server.unhandledRejection(err);
+    })
 }
 GraphViewModel.prototype.setRemoteTags = function(remoteTags) {
-  var self = this;
-  var nodeIdsToRemoteTags = {};
-  remoteTags.forEach(function(ref) {
-    if (ref.name.indexOf('^{}') != -1) {
-      var tagRef = ref.name.slice(0, ref.name.length - '^{}'.length);
-      var name = 'remote-tag: ' + ref.remote + '/' + tagRef.split('/')[2];
-      self.getRef(name).node(self.getNode(ref.sha1));
+  const version = Date.now();
+
+  const sha1Map = {}; // map holding true sha1 per tags
+  remoteTags.forEach(tag => {
+    if (tag.name.indexOf('^{}') !== -1) {
+      // This tag is a dereference tag, use this sha1.
+      const tagRef = tag.name.slice(0, tag.name.length - '^{}'.length);
+      sha1Map[tagRef] = tag.sha1
+    } else if (!sha1Map[tag.name]) {
+      // If sha1 wasn't previously set, use this sha1
+      sha1Map[tag.name] = tag.sha1
+    }
+  });
+
+  remoteTags.forEach((ref) => {
+    if (ref.name.indexOf('^{}') === -1) {
+      const name = `remote-tag: ${ref.remote}/${ref.name.split('/')[2]}`;
+      this.getRef(name).node(this.getNode(sha1Map[ref.name]));
+      this.getRef(name).version = version;
+    }
+  });
+  this.refs().forEach((ref) => {
+    // tag is removed from another source
+    if (ref.isRemoteTag && (!ref.version || ref.version < version)) {
+      ref.remove(true);
     }
   });
 }

@@ -129,6 +129,9 @@
       &.rebase {
         background: @graph-action-rebase-background;
       }
+      &.squash {
+        background: rgba(100, 60, 222, 0.9);
+      }
       &.move {
         width: auto;
         background: @graph-action-move-background;
@@ -164,7 +167,21 @@
         padding: 0px;
         margin: 0px;
         margin-top: 9px;
-        color: @graph-branching-form-color;
+        -webkit-text-stroke-width: 1px;
+        color: rgba(255, 255, 255, 0.3);
+        &:hover {
+          color: rgba(255, 255, 255, 0.8);
+        }
+      }
+      .showSearchForm {
+        background: transparent;
+        border: 0px;
+        cursor: pointer;
+        padding: 0px;
+        margin: 0px;
+        margin-top: 9px;
+        -webkit-text-stroke-width: 1px;
+        color: rgba(255, 255, 255, 0.3);
         &:hover {
           color: @graph-branching-form-hover-color;
         }
@@ -180,11 +197,6 @@
 
   .graphFooter {
     height: 60px;
-    .progressBar {
-      position: relative;
-      top: -150px;
-      margin-left: (@log-width-small);
-    }
   }
 
   .remote-icon {
@@ -206,5 +218,11 @@
     width: 5px;
     height: 10px;
     display: inline-block;
+  }
+}
+
+.ui-autocomplete {
+  .octicon {
+    float: right;
   }
 }

@@ -10,21 +10,21 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const semver = require('semver');
 const path = require('path');
-const fs = require('fs');
-const async = require('async');
+const fs = require('./utils/fs-async');
 const signals = require('signals');
 const os = require('os');
 const cache = require('./utils/cache');
 const UngitPlugin = require('./ungit-plugin');
 const serveStatic = require('serve-static');
 const bodyParser = require('body-parser');
+const Bluebird = require('bluebird');
 
 process.on('uncaughtException', (err) => {
   winston.error(err.stack ? err.stack.toString() : err.toString());
-  async.parallel([
-    bugtracker.notify.bind(bugtracker, err, 'ungit-server'),
-    usageStatistics.addEvent.bind(usageStatistics, 'server-exception')
-  ], () => process.exit());
+  Bluebird.all([
+    new Bluebird((resolve) => { bugtracker.notify.bind(bugtracker, err, 'ungit-launcher'); resolve(); }),
+    new Bluebird((resolve) => { usageStatistics.addEvent.bind(usageStatistics, 'launcher-exception'); resolve(); })
+  ]).then(() => { app.quit(); });
 });
 
 console.log('Setting log level to ' + config.logLevel);
@@ -89,8 +89,11 @@ if (config.allowedIPs) {
   app.use((req, res, next) => {
     const ip = req.ip || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
     if (config.allowedIPs.indexOf(ip) >= 0) next();
-    else res.status(403).send(403, '<h3>This host is not authorized to connect</h3>' +
+    else {
+      res.status(403).send(403, '<h3>This host is not authorized to connect</h3>' +
       '<p>You are trying to connect to an Ungit instance from an unathorized host.</p>');
+      winston.warn(`Host trying but not authorized to connect: ${ip}`);
+    }
   });
 }
 
@@ -124,9 +127,15 @@ let ensureAuthenticated = (req, res, next) => { next(); };
 
 if (config.authentication) {
   const cookieParser = require('cookie-parser');
+  const session = require('express-session')
+  const MemoryStore = require('memorystore')(session)
   app.use(cookieParser());
-  const session = require('express-session');
-  app.use(session({ secret: 'ungit' }));
+  app.use(session({
+    store: new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    }),
+    secret: 'ungit'
+  }));
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -161,27 +170,27 @@ if (config.authentication) {
   };
 }
 
-const indexHtmlCache = cache((callback) => {
-  pluginsCache((plugins) => {
-    fs.readFile(__dirname + '/../public/index.html', (err, data) => {
-      async.map(Object.keys(plugins), (pluginName, callback) => {
-        plugins[pluginName].compile(callback);
-      }, (err, result) => {
-        const html = result.join('\n\n');
-        data = data.toString().replace('<!-- ungit-plugins-placeholder -->', html);
+const indexHtmlCacheKey = cache.registerFunc(() => {
+  return cache.resolveFunc(pluginsCacheKey).then((plugins) => {
+    return fs.readFileAsync(__dirname + '/../public/index.html').then((data) => {
+      return Bluebird.all(Object.keys(plugins).map((pluginName) => {
+        return plugins[pluginName].compile();
+      })).then((results) => {
+        data = data.toString().replace('<!-- ungit-plugins-placeholder -->', results.join('\n\n'));
         data = data.replace(/__ROOT_PATH__/g, config.rootPath);
-        callback(null, data);
-      });
+
+        return data;
+      })
     });
   });
 });
 
 app.get('/', (req, res) => {
   if (config.dev) {
-    pluginsCache.invalidate();
-    indexHtmlCache.invalidate();
+    cache.invalidateFunc(pluginsCacheKey);
+    cache.invalidateFunc(indexHtmlCacheKey);
   }
-  indexHtmlCache((err, data) => {
+  cache.resolveFunc(indexHtmlCacheKey).then((data) => {
     res.end(data);
   });
 });
@@ -245,12 +254,13 @@ const loadPlugins = (plugins, pluginBasePath) => {
     winston.info('Plugin loaded: ' + pluginDir);
   });
 }
-const pluginsCache = cache((callback) => {
+const pluginsCacheKey = cache.registerFunc(() => {
   const plugins = [];
   loadPlugins(plugins, path.join(__dirname, '..', 'components'));
-  if (fs.existsSync(config.pluginDirectory))
+  if (fs.existsSync(config.pluginDirectory)) {
     loadPlugins(plugins, config.pluginDirectory);
-  callback(plugins);
+  }
+  return plugins;
 });
 
 app.get('/serverdata.js', (req, res) => {
@@ -269,9 +279,22 @@ app.get('/api/latestversion', (req, res) => {
   sysinfo.getUngitLatestVersion()
     .then((latestVersion) => {
       if (!semver.valid(config.ungitDevVersion)) {
-        res.json({ latestVersion: latestVersion, currentVersion: config.ungitDevVersion, outdated: false });
+        res.json({
+          latestVersion: latestVersion,
+          currentVersion: config.ungitDevVersion,
+          outdated: false
+        });
       } else {
-        res.json({ latestVersion: latestVersion, currentVersion: config.ungitDevVersion, outdated: semver.gt(latestVersion, config.ungitDevVersion) });
+        // We only want to show the "new version" banner if the major/minor version was bumped
+        let latestSansPatch = semver(latestVersion);
+        latestSansPatch.patch = 0;
+        let currentSansPatch = semver(config.ungitDevVersion);
+        currentSansPatch.patch = 0;
+        res.json({
+          latestVersion: latestVersion,
+          currentVersion: config.ungitDevVersion,
+          outdated: semver.gt(latestSansPatch, currentSansPatch)
+        });
       }
     }).catch((err) => {
       res.json({ latestVersion: config.ungitDevVersion, currentVersion: config.ungitDevVersion, outdated: false });
@@ -285,58 +308,47 @@ app.get('/api/gitversion', (req, res) => {
 });
 
 const userConfigPath = path.join(config.homedir, '.ungitrc');
-const readUserConfig = (callback) => {
-  fs.exists(userConfigPath, (hasConfig) => {
-    if (!hasConfig) return callback(null, {});
-
-    fs.readFile(userConfigPath, { encoding: 'utf8' }, (err, content) => {
-      if (err) return callback(err);
-      else callback(null, JSON.parse(content.toString()));
-    });
+const readUserConfig = () => {
+  return fs.isExists(userConfigPath).then((hasConfig) => {
+    if (!hasConfig) return {};
+    return fs.readFileAsync(userConfigPath, { encoding: 'utf8' })
+      .then((content) => { return JSON.parse(content.toString()); })
+      .catch((err) => {
+        winston.error(`Stop at reading ~/.ungitrc because ${err}`);
+        process.exit(0);
+      });
   });
 }
-const writeUserConfig = (configContent, callback) => {
-  fs.writeFile(userConfigPath, JSON.stringify(configContent, undefined, 2), callback);
+const writeUserConfig = (configContent) => {
+  return fs.writeFileAsync(userConfigPath, JSON.stringify(configContent, undefined, 2));
 }
 
 app.get('/api/userconfig', ensureAuthenticated, (req, res) => {
-  readUserConfig((err, userConfig) => {
-    if (err) res.status(400).json(err);
-    else res.json(userConfig);
-  });
+  readUserConfig().then((userConfig) => { res.json(userConfig); })
+    .catch((err) => { res.status(400).json(err); });
 });
 app.post('/api/userconfig', ensureAuthenticated, (req, res) => {
-  writeUserConfig(req.body, (err) => {
-    if (err) res.status(400).json(err);
-    else res.json({});
-  })
+  writeUserConfig(req.body).then(() => { res.json({}); })
+    .catch((err) => { res.status(400).json(err); });
 });
-
 
 app.get('/api/fs/exists', ensureAuthenticated, (req, res) => {
   res.json(fs.existsSync(req.query['path']));
 });
 
 app.get('/api/fs/listDirectories', ensureAuthenticated, (req, res) => {
-  const dir = req.query.term.trim();
+  const dir = path.resolve(req.query.term.trim()).replace("/~", "");
 
-  readUserConfig((err, userconfig) => {
-    if (err) res.status(400).json(err);
-    else if (dir) {
-      fs.readdir(dir, (err, files) => {
-        if (err) {
-          res.status(400).json({ errorCode: 'read-dir-failed', error: err });
-        } else {
-          const absolutePaths = files.map((file) => { return path.join(dir, file) });
-          async.filter(absolutePaths, (absolutePath, callback) => {
-            fs.stat(absolutePath, (err, stat) => {
-              callback(null, !err && stat && stat.isDirectory());
-            });
-          }, (err, filteredFiles) => res.json(filteredFiles));
-        }
-      });
-    }
-  });
+  fs.readdirAsync(dir).then(filenames => {
+    return filenames.map((filename) => path.join(dir, filename));
+  }).filter((filepath) => {
+    return fs.statAsync(filepath)
+      .then((stat) => stat.isDirectory())
+      .catch(() => false);
+  }).then(filteredFiles => {
+    filteredFiles.unshift(dir);
+    res.json(filteredFiles);
+  }).catch((err) => res.status(400).json(err));
 });
 
 // Error handling
@@ -349,7 +361,7 @@ app.use((err, req, res, next) => {
 
 exports.started = new signals.Signal();
 
-server.listen(config.port, () => {
+server.listen(config.port, config.ungitBindIp, () => {
   winston.info('Listening on port ' + config.port);
   console.log('## Ungit started ##'); // Consumed by bin/ungit to figure out when the app is started
   exports.started.dispatch();
