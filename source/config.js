@@ -138,7 +138,8 @@ const defaultConfig = {
 
   // Specifies which theme will be used
   // The value corresponds to the variables-<theme>.less file, where the value below specifies <theme>
-  theme: 'light'
+  theme: 'light',
+
   // Preferred default diff type used. Can be `"textdiff"` or `"sidebysidediff"`.
 	diffType: undefined,
 
@@ -230,7 +231,7 @@ let argv = yargs
 .describe('isDisableProgressBar', 'disable progress bar (front end api)')
 .boolean('isDisableProgressBar')
 .describe('gitBinPath', 'git binary path, not including git binary path. (i.e. /bin or /usr/bin/)')
-.describe('theme', 'Specifies the theme to be used, default: dark. Other options include: light, inverse');
+.describe('theme', 'Specifies the theme to be used, default: dark. Other options include: light, inverse')
 ;
 
 const argvConfig = argv.argv;
