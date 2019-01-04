@@ -1,161 +1,160 @@
 
 @import "variables-common.less";
-// This is the default theme with all colours inverted, and then hue rotated by 180 using this: https://www.sessions.edu/color-calculator/
 
 // -- Bootstrap variables ---
-@navbar-default-bg: #bbc8d4;
-@body-bg: #cccfda;
+@navbar-default-bg: #D4C7BB;
+@body-bg: #DAD7CC;
 @progress-bg: rgba(0, 0, 0, 0.2);
 @progress-bar-bg: rgba(0, 0, 0, 0.2);
 @text-color: #272727;
-@text-muted: #7a848f;
-@panel-bg: #acb6c3;
+@text-muted: #8F857A;
+@panel-bg: #C3B9AC;
 @panel-default-text: @text-color;
-@panel-default-heading-bg: #bec7d3;
-@panel-default-border: #d3c9d3;
+@panel-default-heading-bg: #D3CABE;
+@panel-default-border: #C9D3C9;
 @list-group-bg: transparent;
 @list-group-hover-bg: rgba(255, 255, 255, 0.2);
-@list-group-border: #a7b5bc;
+@list-group-border: #BCAEA7;
 @list-group-link-heading-color: rgba(0, 0, 0, 0.8);
 @list-group-link-color: rgba(0, 0, 0, 0.5);
 @modal-content-bg: @panel-bg;
 @modal-header-border-color: @list-group-border;
 @input-bg: rgba(0, 0, 0, 0.1);
 @input-color-placeholder: rgba(0, 0, 0, 0.3);
-@btn-default-bg: #99aaaa;
+@btn-default-bg: #AA9999;
 @btn-default-color: @text-color;
 @btn-default-border: rgba(255, 255, 255, 0.1);
 @link-hover-color: darken(@link-color, 15%);
 
 // -- Theme variables
-@webkit-scrollbar-track-bg-color: #bbc8d4;
+@webkit-scrollbar-track-bg-color: #D4C7BB;
 @webkit-scrollbar-thumb-bg-color: rgba(0, 0, 0, 0.2);
 @webkit-scrollbar-button-bg-color: rgba(255, 255, 255, 0.2);
 @webkit-scrollbar-corner-bg-color: white;
 
 // -- Theme variables for staging component --
-@staging-bg-color: #c59ba5;
-@staging-box-shadow-color: #cccfda;
-@staging-color: #5a4747;
-@staging-form-control-diabled-bg-color: rgba(219, 191, 198, 0.75);
-@staging-arrow-down-border-color: rgb(198, 156, 166);
-@staging-validationError-color: #d25129;
+@staging-bg-color: #9BC5BB;
+@staging-box-shadow-color: #DAD7CC;
+@staging-color: #475A5A;
+@staging-form-control-diabled-bg-color: rgba(191, 219, 212, 0.75);
+@staging-arrow-down-border-color: rgb(156, 198, 188);
+@staging-validationError-color: #29ABD2;
 @staging-diffContainer-bg-color: rgba(0, 0, 0, 0.1);
 @staging-discard-color: rgba(0, 0, 0, 0.3);
 @staging-discard-hover-bg-color: #fff;
 @staging-discard-hover-color: rgba(0, 0, 0, 0.9);
 @staging-ignore-color: rgba(0, 0, 0, 0.3);
-@staging-ignore-hover-bg-color: #0000aa;
+@staging-ignore-hover-bg-color: #AAAA00;
 @staging-ignore-hover-color: rgba(0, 0, 0, 0.9);
-@staging-patch-bg-color: #72db6e;
+@staging-patch-bg-color: #D86EDB;
 @staging-patch-color: rgba(0, 0, 0, 0.9);
 @staging-files-showingDiffs-color: #fff;
 @staging-files-showingDiffs-bg-color: rgba(0, 0, 0, 0.1);
 @staging-files-name-color: rgba(0, 0, 0, 0.8);
 @staging-files-additions-color: #6B6B6B;
 @staging-files-deletions-color: #848484;
-@staging-files-conflicts-color: #ed24d2;
-@staging-files-markresolved-color: #ed24d2;
+@staging-files-conflicts-color: #24ED3F;
+@staging-files-markresolved-color: #24ED3F;
 @staging-files-markresolved-hover-color: #FFF;
-@staging-files-markresolved-hover-bg-color: #7112ba;
-@staging-files-launchmergetool-color: #8500aa;
+@staging-files-markresolved-hover-bg-color: #5BBA12;
+@staging-files-launchmergetool-color: #24AA00;
 @staging-files-launchmergetool-hover-color: #FFF;
-@staging-files-launchmergetool-hover-bg-color: #2d0088;
+@staging-files-launchmergetool-hover-bg-color: #5B8800;
 @staging-checkmark-color: #000;
 
 // -- Theme variables for stash component --
-@stash-bg-color: #cdaab4;
+@stash-bg-color: #AACDC3;
 
 // -- Theme variables for generic.less --
 @generic-form-control-color: rgba(0, 0, 0, 0.8);
 @generic-list-group-item-bg-color: rgba(255, 255, 255, 0.09);
 @generic-hr-border-color: rgba(0, 0, 0, 0.1);
-@generic-droparea-bg-color: #a3c4d4;
+@generic-droparea-bg-color: #D4B3A3;
 
 // -- Theme variables for styles.less --
 @styles-glyphicon-circled-border-color: #979797;
-@styles-ui-autocomplete-bg-color: rgba(25, 35, 55, 1);
+@styles-ui-autocomplete-bg-color: rgba(55, 45, 25, 1);
 @styles-ui-autocomplete-box-shadow-color: rgba(255, 255, 255, 0.2);
 @styles-ui-autocomplete-a-color: rgba(255, 255, 255, 0.6);
-@styles-ui-autocomplete-focus-bg-color: rgba(204, 219, 244, 1);
+@styles-ui-autocomplete-focus-bg-color: rgba(244, 229, 204, 1);
 @styles-ui-autocomplete-focus-color: #000;
 
 // -- Theme variables for commit.less --
 @commit-highlighted-box-shadow-color: rgba(255, 255, 255, 0.2);
-@commit-highlighted-bg-color: #99a5b4;
-@commit-highlighted-arrow-border-color: #9aa6b5;
+@commit-highlighted-bg-color: #B4A899;
+@commit-highlighted-arrow-border-color: #B5A99A;
 @commit-selected-diff-wrapper-box-shadow-color: rgba(255, 255, 255, 0.15);
 @commit-selected-diff-inner-box-shadow-color: rgba(255, 255, 255, 0.2);
-@commit-box-shadow-border-color: #d6d8e1;
-@commit-box-arrow-border-color: #adb7c4;
-@commit-box-color: #596970;
-@commit-box-bg-color: #99a5b4;
+@commit-box-shadow-border-color: #E1DFD6;
+@commit-box-arrow-border-color: #C4BAAD;
+@commit-box-color: #706059;
+@commit-box-bg-color: #B4A899;
 
 // -- Theme variables for commitdiff.less --
 @commitdiff-file-bg-color: rgba(0, 0, 0, 0.16);
 @commitdiff-file-head-color: rgba(0, 0, 0, 0.79);
-@commitdiff-file-addition-color: #0c641b;
-@commitdiff-file-deletion-color: #6c1d13;
+@commitdiff-file-addition-color: #640C56;
+@commitdiff-file-deletion-color: #13626C;
 @commitdiff-diff-bg-color: rgba(255, 255, 255, 0.11);
 @commitdiff-diff-color: rgba(0, 0, 0, 0.3);
 
 // -- Theme variables for graph.less --
 @graph-ref-focused-border-color: #000;
-@graph-ref-remote-color: #0056a2;
-@graph-ref-tag-color: #94990d;
+@graph-ref-remote-color: #A24B00;
+@graph-ref-tag-color: #110D99;
 @graph-action-color: #000;
-@graph-action-push-background: rgba(39, 0, 194, 0.9);
-@graph-action-pull-background: rgba(66, 217, 66, 0.9);
-@graph-action-reset-background: rgba(224, 82, 0, 0.9);
-@graph-action-rebase-background: rgba(195, 192, 33, 0.9);
+@graph-action-push-background: rgba(194, 116, 0, 0.9);
+@graph-action-pull-background: rgba(217, 66, 66, 0.9);
+@graph-action-reset-background: rgba(0, 126, 224, 0.9);
+@graph-action-rebase-background: rgba(190, 33, 195, 0.9);
 @graph-action-move-background: rgba(255, 255, 255, 0.1);
-@graph-action-merge-background: rgba(120, 43, 47, 0.9);
-@graph-action-checkout-background: rgba(200, 126, 36, 0.9);
-@graph-action-delete-background: rgba(199, 86, 41, 0.9);
-@graph-action-cherry-pick-background: rgba(145, 145, 99, 0.9);
-@graph-action-uncommit-background: rgba(235, 141, 97, 0.9);
-@graph-action-revert-background: rgba(212, 132, 76, 0.9);
+@graph-action-merge-background: rgba(47, 120, 43, 0.9);
+@graph-action-checkout-background: rgba(50, 36, 200, 0.9);
+@graph-action-delete-background: rgba(41, 178, 199, 0.9);
+@graph-action-cherry-pick-background: rgba(145, 99, 145, 0.9);
+@graph-action-uncommit-background: rgba(97, 202, 235, 0.9);
+@graph-action-revert-background: rgba(76, 120, 212, 0.9);
 @graph-branching-form-color: rgba(0, 0, 0, 0.3);
 @graph-branching-form-hover-color: rgba(0, 0, 0, 0.8);
 
 // -- Theme variables for header.less --
-@header-navbar-box-shadow-color: #cccfda;
+@header-navbar-box-shadow-color: #DAD7CC;
 @header-navbar-backlink-color: #979797;
 @header-navbar-backlink-hover-color: #5A5A5A;
-@header-navber-arrow-up-border-color: #cdd1db;
+@header-navber-arrow-up-border-color: #DBD7CD;
 
 // -- Theme variables for home.less --
-@home-repository-path-removed-color: #ac3030;
+@home-repository-path-removed-color: #30ACAC;
 @home-repository-glyphicon-color: #979797;
 @home-repository-glyphicon-hover-color: #5A5A5A;
 
 // -- Theme variables for imagediff.less --
 @imagediff-glyphicon-color: rgba(255, 255, 255, 0.3);
-@imagediff-removed-bg-color: rgba(185, 25, 54, 0.2);
-@imagediff-added-bg-color: rgba(25, 185, 54, 0.2);
+@imagediff-removed-bg-color: rgba(25, 185, 155, 0.2);
+@imagediff-added-bg-color: rgba(185, 25, 155, 0.2);
 
 // -- Theme variables for refreshbutton.less --
 @refreshbutton-toolbar-bg-color: rgba(255, 255, 255, 0.1);
-@refreshbutton-repository-bg-color: rgba(154, 171, 171, 1);
+@refreshbutton-repository-bg-color: rgba(171, 154, 154, 1);
 
 // -- Theme variables for d2h.less --
-@d2h-lines-added-bg-color: #003100;
+@d2h-lines-added-bg-color: #310031;
 @d2h-lines-added-color: #000000;
-@d2h-lines-added-border-color: #1d4b1d;
-@d2h-lines-deleted-bg-color: #370808;
+@d2h-lines-added-border-color: #4B1D4B;
+@d2h-lines-deleted-bg-color: #083737;
 @d2h-lines-deleted-color: #FFFFFF;
-@d2h-lines-deleted-border-color: #511616;
+@d2h-lines-deleted-border-color: #165151;
 @d2h-line-del-bg-color: rgba(0, 0, 0, 0.2);
 @d2h-line-ins-bg-color: rgba(0, 0, 0, 0.6);
-@d2h-code-linenumber-bg-color: #7c848d;
+@d2h-code-linenumber-bg-color: #8D857C;
 @d2h-code-linenumber-color: rgba(255, 255, 255, 0.5);
 @d2h-code-linenumber-border-color: rgba(255, 255, 255, 0.34);
 @d2h-cntx-color: rgba(0, 0, 0, 0.3);
-@d2h-code-side-linenumber-bg-color: rgba(124, 132, 141, 1);
+@d2h-code-side-linenumber-bg-color: rgba(141, 133, 124, 1);
 @d2h-code-side-linenumber-color: rgba(255, 255, 255, 0.5);
 @d2h-code-side-linenumber-border-color: rgba(255, 255, 255, 0.34);
-@d2h-del-bg-color: #a92817;
+@d2h-del-bg-color: #1798A9;
 @d2h-del-color: #000000;
-@d2h-ins-bg-color: #0d9922;
+@d2h-ins-bg-color: #990D84;
 @d2h-ins-color: #FFFFFF;
 @d2h-info-color: rgba(0, 0, 0, 0.3);
